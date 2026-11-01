@@ -4,6 +4,10 @@ const Parcel = require('../models/Parcel');
 const Booking = require('../models/Booking');
 const ApiError = require('../utils/ApiError');
 const auditService = require('./auditService');
+const notificationService = require('./notificationService');
+const sockets = require('../sockets');
+const otpService = require('./otpService');
+const Delegation = require('../models/Delegation');
 const { PARCEL_STATUS, BOOKING_STATUS } = require('../utils/constants');
 
 const OTP_GRACE_MS = 2 * 60 * 60 * 1000; // OTP stays valid until 2h after the slot ends
@@ -64,6 +68,8 @@ async function createBooking({ parcelId, slotId, resident }) {
       entityType: 'Booking', entityId: booking._id, parcelId, action: 'SLOT_BOOKED', actor: resident,
       meta: { slotId: slot._id, startsAt: slot.startsAt },
     });
+    sockets.toAll('slot:updated', { slotId: String(slot._id), remaining: slot.capacity - slot.booked });
+    await notificationService.safely(notificationService.emitParcelEvent('parcel:updated', claimed));
     return { booking, slot, parcel: claimed };
   } catch (err) {
     await Slot.updateOne({ _id: slot._id, booked: { $gt: 0 } }, { $inc: { booked: -1 } }); // compensate
@@ -90,7 +96,31 @@ async function cancelBooking({ bookingId, resident }) {
   await auditService.log({
     entityType: 'Booking', entityId: booking._id, parcelId: booking.parcelId, action: 'SLOT_CANCELLED', actor: resident,
   });
+  sockets.toAll('slot:updated', { slotId: String(booking.slotId) });
   return booking;
 }
 
-module.exports = { createBooking, cancelBooking };
+/**
+ * Owner-only view of a booking. This is the ONLY place a plaintext OTP / QR / delegate code is produced.
+ * The caller must already have proven ownership (query filters by residentId).
+ */
+async function ownerView(bookingId, resident) {
+  const booking = await Booking.findOne({ _id: bookingId, residentId: resident._id })
+    .select('+otpNonce').populate('slotId parcelId');
+  if (!booking) throw ApiError.notFound('Booking not found.');
+  const view = booking.toObject();
+  delete view.otpNonce;
+  if (booking.status === BOOKING_STATUS.ACTIVE) {
+    const qrToken = otpService.signQrToken(booking);
+    view.otp = otpService.deriveOtp(booking.id, booking.otpNonce);
+    view.qrDataUrl = await otpService.qrDataUrl(qrToken);
+    const delegations = await Delegation.find({ bookingId, usedAt: null, expiresAt: { $gt: new Date() } }).select('+codeNonce');
+    view.delegations = delegations.map((d) => ({
+      _id: d._id, delegateName: d.delegateName, expiresAt: d.expiresAt,
+      code: otpService.deriveDelegateCode(d.id, d.codeNonce),
+    }));
+  }
+  return view;
+}
+
+module.exports = { createBooking, cancelBooking, ownerView };

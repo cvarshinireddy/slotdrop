@@ -26,9 +26,10 @@ describe('app smoke (no database)', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  test('Step 3 routes are protected', async () => {
+  test('Step 3 and 4 routes are protected', async () => {
     for (const [m, url] of [['post', '/api/parcels'], ['get', '/api/parcels'], ['get', '/api/slots'],
-      ['get', '/api/slots/today'], ['post', '/api/bookings'], ['put', '/api/admin/slot-templates']]) {
+      ['get', '/api/slots/today'], ['post', '/api/bookings'], ['put', '/api/admin/slot-templates'],
+      ['post', '/api/handover/verify'], ['get', '/api/notifications'], ['post', '/api/bookings/65f000000000000000000001/delegate']]) {
       expect((await request(app)[m](url)).status).toBe(401);
     }
   });

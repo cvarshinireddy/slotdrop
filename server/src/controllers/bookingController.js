@@ -1,6 +1,6 @@
 const asyncHandler = require('../utils/asyncHandler');
 const Booking = require('../models/Booking');
-const ApiError = require('../utils/ApiError');
+const delegationService = require('../services/delegationService');
 const bookingService = require('../services/bookingService');
 
 exports.create = asyncHandler(async (req, res) => {
@@ -14,9 +14,14 @@ exports.listMine = asyncHandler(async (req, res) => {
 });
 
 exports.get = asyncHandler(async (req, res) => {
-  const booking = await Booking.findOne({ _id: req.params.id, residentId: req.user._id }).populate('slotId parcelId');
-  if (!booking) throw ApiError.notFound('Booking not found.');
-  res.json({ data: { booking } }); // OTP + QR are added in Step 4 (owner-only)
+  res.json({ data: { booking: await bookingService.ownerView(req.params.id, req.user) } }); // owner-only: OTP + QR
+});
+
+exports.delegate = asyncHandler(async (req, res) => {
+  const { delegation, code } = await delegationService.createDelegation({
+    bookingId: req.params.id, resident: req.user, ...req.body,
+  });
+  res.status(201).json({ data: { delegation: { _id: delegation._id, delegateName: delegation.delegateName, expiresAt: delegation.expiresAt }, code } });
 });
 
 exports.cancel = asyncHandler(async (req, res) => {

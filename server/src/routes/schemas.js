@@ -55,3 +55,22 @@ const templatesBody = z.object({
 const bookingBody = z.object({ parcelId: objectId, slotId: objectId });
 
 Object.assign(module.exports, { parcelBody, parcelListQuery, slotsQuery, slotPatchBody, templatesBody, bookingBody });
+
+const delegateBody = z.object({
+  delegateName: z.string().trim().min(2).max(80),
+  delegatePhone: phone.optional(),
+  hours: z.number().int().min(1).max(48).optional(),
+});
+// Exactly one proof method: a QR token, or flat + (resident OTP | delegate code).
+const handoverBody = z
+  .object({
+    qrToken: z.string().min(20).max(2000).optional(),
+    flat: z.string().trim().regex(/^[A-Za-z]-\d{3,4}$/, 'Use a format like A-1204').optional(),
+    otp: z.string().regex(/^\d{6}$/, 'OTP is 6 digits').optional(),
+    delegateCode: z.string().trim().regex(/^[A-Za-z0-9]{6}$/, 'Code is 6 characters').optional(),
+  })
+  .refine((v) => (v.qrToken ? !v.flat && !v.otp && !v.delegateCode : v.flat && !!v.otp !== !!v.delegateCode), {
+    message: 'Send either a QR token, or a flat number with an OTP or delegate code.',
+  });
+
+Object.assign(module.exports, { delegateBody, handoverBody });

@@ -2,6 +2,7 @@ const Parcel = require('../models/Parcel');
 const Flat = require('../models/Flat');
 const ApiError = require('../utils/ApiError');
 const auditService = require('./auditService');
+const notificationService = require('./notificationService');
 const { publicUrl } = require('./storageService');
 const { ROLES } = require('../utils/constants');
 
@@ -16,6 +17,15 @@ async function logParcel({ flatId, courier, shelfId, file, guard }) {
     entityType: 'Parcel', entityId: parcel._id, parcelId: parcel._id, action: 'RECEIVED', actor: guard,
     meta: { courier, shelfId },
   });
+  await notificationService.safely(Promise.all([
+    notificationService.notifyFlat(flatId, {
+      type: 'parcel_received',
+      title: `Your ${courier} parcel is at the gate`,
+      body: 'When should we hand it over? Pick a slot that suits you.',
+      parcelId: parcel._id,
+    }),
+    notificationService.emitParcelEvent('parcel:new', parcel),
+  ]));
   return parcel.populate('flatId');
 }
 

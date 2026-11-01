@@ -4,7 +4,7 @@ const { AUDIT_ACTIONS } = require('../utils/constants');
 // Append-only: no update/delete endpoints exist, and the schema blocks accidental updates.
 const auditLogSchema = new mongoose.Schema(
   {
-    entityType: { type: String, enum: ['Parcel', 'Booking', 'Slot'], required: true },
+    entityType: { type: String, enum: ['Parcel', 'Booking', 'Slot', 'Flat', 'User'], required: true },
     entityId: { type: mongoose.Schema.Types.ObjectId, required: true },
     parcelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Parcel', index: true },
     action: { type: String, enum: AUDIT_ACTIONS, required: true },

@@ -8,5 +8,7 @@ router.use('/parcels', require('./parcels'));
 router.use('/slots', require('./slots'));
 router.use('/admin', require('./adminSlots'));
 router.use('/bookings', require('./bookings'));
+router.use('/handover', require('./handover'));
+router.use('/notifications', require('./notifications'));
 
 module.exports = router;

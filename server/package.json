@@ -8,7 +8,7 @@
     "dev": "nodemon src/server.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "seed": "node src/seed/seed.js",
-    "test:nodb": "cross-env NODE_ENV=test jest tests/smoke.test.js tests/dates.test.js"
+    "test:nodb": "cross-env NODE_ENV=test jest tests/smoke.test.js tests/dates.test.js tests/otp.unit.test.js"
   },
   "author": "",
   "license": "ISC",
@@ -23,6 +23,9 @@
     "mongoose": "^9.11.4",
     "morgan": "^1.12.1",
     "multer": "^2.5.0",
+    "node-cron": "^4.6.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {

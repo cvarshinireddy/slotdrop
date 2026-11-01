@@ -8,6 +8,12 @@ fs.mkdirSync(OUT, { recursive: true });
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${extra ? '  ' + extra : ''}`); if (!ok) fails++; };
 
+// Polls until the condition holds (UI updates after a save arrive after a refetch, so one-shot reads are racy).
+async function eventually(fn, timeout = 6000) {
+  const end = Date.now() + timeout;
+  for (;;) { try { if (await fn()) return true; } catch { /* retry */ } if (Date.now() > end) return false; await new Promise((r) => setTimeout(r, 100)); }
+}
+
 async function audit(page, tag) {
   const r = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -35,7 +41,7 @@ async function login(page, role) {
   // ---------- resident ----------
   const res = await ctx.newPage(); watch(res, 'resident');
   await res.goto(`${BASE}/login`);
-  await res.evaluate(() => window.__slotdropMock?.reset && localStorage.removeItem('slotdrop-mock-db-v2'));
+  await res.evaluate(() => window.__slotdropMock?.reset && localStorage.removeItem('slotdrop-mock-db-v3'));
   await login(res, 'Resident');
   await res.getByRole('heading', { name: /^Good (morning|afternoon|evening), Priya/ }).waitFor();
   await res.waitForSelector('article');
@@ -225,6 +231,71 @@ async function login(page, role) {
   await dlg.getByRole('button', { name: 'Save windows' }).click();
   await a.getByText('Time windows saved').waitFor();
   check('windows: valid edit saves', true);
+
+
+  // ---------- admin: people & flats ----------
+  await a.getByRole('link', { name: 'People' }).click();
+  await a.getByRole('heading', { name: 'People and flats' }).waitFor();
+  await a.locator('ul > li').first().waitFor();
+  check('users: 13 people listed (1 admin, 2 guards, 10 residents)', (await a.locator('ul > li').count()) === 13);
+  await audit(a, 'users');
+  await a.screenshot({ path: `${OUT}/users-375.png` });
+  await a.getByRole('button', { name: 'Guards' }).click();
+  check('users: role filter shows 2 guards', (await a.locator('ul > li').count()) === 2);
+  await a.getByRole('button', { name: 'Everyone' }).click();
+  check('users: own account cannot be deactivated', await a.getByRole('switch', { name: /Anita Deshmukh/ }).isDisabled());
+
+  await a.getByRole('button', { name: 'Add person' }).click();
+  let dlg2 = a.getByRole('dialog');
+  await dlg2.getByLabel('Full name').fill('Neha Kapoor');
+  await dlg2.getByLabel('Email').fill('priya.sharma@slotdrop.in'); // already taken
+  await dlg2.getByLabel('Mobile').fill('9876543210');
+  await dlg2.getByLabel('Flat').selectOption({ label: 'A-0604' });
+  await dlg2.getByRole('button', { name: 'Create account' }).click();
+  await dlg2.getByRole('alert').waitFor();
+  check('users: duplicate email rejected with a clear message', /already in use/.test(await dlg2.getByRole('alert').innerText()));
+  await dlg2.getByLabel('Email').fill('neha.kapoor@example.in');
+  await dlg2.getByRole('button', { name: 'Create account' }).click();
+  await dlg2.getByRole('heading', { name: 'Account created' }).waitFor();
+  const tempPw = (await dlg2.locator('dd.font-mono').textContent()).trim();
+  check('users: temporary password generated (10+ chars)', tempPw.length >= 10, tempPw.length + ' chars');
+  await dlg2.getByRole('button', { name: 'Done' }).click();
+  check('users: new person appears in the list', await eventually(async () => (await a.locator('ul > li').filter({ hasText: 'Neha Kapoor' }).count()) === 1));
+
+  // the new account works...
+  const n = await ctx.newPage(); watch(n, 'newuser');
+  await n.goto(`${BASE}/login`);
+  await n.getByLabel('Email or mobile').fill('neha.kapoor@example.in');
+  await n.getByLabel('Password', { exact: true }).fill(tempPw);
+  await n.getByRole('button', { name: 'Sign in' }).click();
+  await n.getByRole('heading', { name: /^Good (morning|afternoon|evening), Neha/ }).waitFor();
+  check('users: new resident can sign in and sees the empty state', await eventually(async () => (await n.getByText('Nothing waiting at the gate').count()) >= 1));
+  // ...until an admin deactivates it
+  await a.getByRole('switch', { name: /Neha Kapoor/ }).click();
+  await a.getByText('Neha Kapoor deactivated').waitFor();
+  const n2 = await ctx.newPage(); watch(n2, 'deactivated');
+  await n2.goto(`${BASE}/login`);
+  await n2.getByLabel('Email or mobile').fill('neha.kapoor@example.in');
+  await n2.getByLabel('Password', { exact: true }).fill(tempPw);
+  await n2.getByRole('button', { name: 'Sign in' }).click();
+  await n2.getByRole('alert').waitFor();
+  check('users: deactivated account cannot sign in', /incorrect/.test(await n2.getByRole('alert').innerText()));
+  await n.reload();
+  await n.waitForURL(/\/login/);
+  check('users: deactivated session is signed out on next load', true);
+
+  // flats
+  await a.getByRole('tab', { name: 'Flats' }).click();
+  await a.waitForSelector('ul.grid > li');
+  check('flats: 14 flats listed', (await a.locator('ul.grid > li').count()) === 14);
+  check('flats: vacant flats are labelled (3 left after assigning one)', (await a.getByText('Vacant', { exact: true }).count()) === 3);
+  await a.getByRole('button', { name: 'Add flat' }).click();
+  const fd = a.getByRole('dialog');
+  await fd.getByLabel('Flat number').fill('E-0101');
+  await fd.getByRole('button', { name: 'Add flat' }).click();
+  await a.getByText('Flat E-0101 added').waitFor();
+  check('flats: new flat appears', await eventually(async () => (await a.locator('ul.grid > li').count()) === 15));
+  await a.screenshot({ path: `${OUT}/flats-375.png` });
 
   // role protection for admin pages
   await res.goto(`${BASE}/admin`);

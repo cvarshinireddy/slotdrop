@@ -75,6 +75,7 @@ export default function Handover() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const lock = useRef(false);
+  const lastScan = useRef({ token: null, at: 0 });
 
   const run = useCallback(async (body) => {
     if (lock.current) return; // the scanner fires many times per second; only handle the first read
@@ -84,7 +85,15 @@ export default function Handover() {
     finally { setBusy(false); }
   }, []);
 
-  const done = useCallback(() => { setResult(null); setCode(''); lock.current = false; }, []);
+  // After "Next parcel" the SAME QR is usually still in front of the camera. Without a cooldown it would be
+  // re-read at once and flash a red "already used" screen right after the green success.
+  const done = useCallback(() => { setResult(null); setCode(''); lock.current = false; lastScan.current.at = Date.now(); }, []);
+  const onScan = useCallback((qrToken) => {
+    const last = lastScan.current;
+    if (qrToken === last.token && Date.now() - last.at < 6000) return;
+    lastScan.current = { token: qrToken, at: Date.now() };
+    run({ qrToken });
+  }, [run]);
   const onUnavailable = useCallback((m) => { setScanError(m); setTab('code'); }, []);
 
   const submit = (e) => { e.preventDefault(); run({ flat: flat.trim(), ...(kind === 'otp' ? { otp: code } : { delegateCode: code }) }); };
@@ -102,7 +111,7 @@ export default function Handover() {
 
       {tab === 'scan' && (
         <section aria-label="QR scanner" className="relative h-[calc(100dvh-4rem)] overflow-hidden bg-foreground lg:h-[28rem] lg:rounded-3xl">
-          <Scanner onDecode={(qrToken) => run({ qrToken })} onUnavailable={onUnavailable} />
+          <Scanner onDecode={onScan} onUnavailable={onUnavailable} />
           <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center"><div className="size-[70%] max-h-72 max-w-72 rounded-3xl border-4 border-primary-foreground/80 shadow-[0_0_0_9999px_hsl(var(--foreground)/0.45)]" /></div>
           <p className="absolute inset-x-0 bottom-6 text-center text-sm font-medium text-background" aria-live="polite">{busy ? 'Checking…' : 'Point at the resident\'s QR code'}</p>
         </section>

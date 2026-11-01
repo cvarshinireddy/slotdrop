@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { CalendarClock, History, Home, LayoutDashboard, PackagePlus, ScanLine, UserRound } from 'lucide-react';
+import { CalendarClock, History, Home, LayoutDashboard, PackagePlus, ScanLine, UserRound, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
 import { BellButton, NotificationsPanel } from './NotificationsPanel';
@@ -14,7 +14,7 @@ const NAV = {
     { to: '/guard/log', label: 'Log parcel', icon: PackagePlus }, { to: '/guard/handover', label: 'Handover', icon: ScanLine },
     { to: '/guard/schedule', label: 'Today', icon: CalendarClock }, { to: '/account', label: 'Account', icon: UserRound },
   ],
-  admin: [{ to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true }, { to: '/account', label: 'Account', icon: UserRound }],
+  admin: [{ to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true }, { to: '/admin/users', label: 'People', icon: Users }, { to: '/account', label: 'Account', icon: UserRound }],
 };
 
 // Desktop sidebar (>= lg) and mobile bottom tabs share one nav config, so they can never drift apart.

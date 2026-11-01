@@ -7,7 +7,7 @@ const validate = require('../middleware/validate');
 const s = require('./schemas');
 
 router.use(authenticate, requireRole('admin'));
-router.get('/', c.listUsers);
+router.get('/', validate({ query: s.usersQuery }), c.listUsers);
 router.patch('/:id/active', validate({ params: s.idParams, body: z.object({ isActive: z.boolean() }) }), c.setActive);
 
 module.exports = router;

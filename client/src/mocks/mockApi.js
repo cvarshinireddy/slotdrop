@@ -5,7 +5,7 @@ import QRCode from 'qrcode';
 import { ApiError } from '../lib/realApi';
 import { addDaysKey, dateKey } from '../lib/format';
 
-const KEY = 'slotdrop-mock-db-v2';
+const KEY = 'slotdrop-mock-db-v3';
 const MAX_ATTEMPTS = 5;
 const IST = 5.5 * 3600 * 1000;
 const H = 3600 * 1000;
@@ -34,14 +34,22 @@ const istToIso = (key, hour) => { const [y, m, d] = key.split('-').map(Number); 
 
 function seed() {
   const today = dateKey();
-  const flats = ['A-1204', 'A-1101', 'B-0904', 'B-0302', 'C-0701', 'C-1502', 'D-0405'].map((number, i) => ({ _id: `f${i}`, number, tower: number[0] }));
+  const flats = ['A-1204', 'A-1101', 'B-0904', 'A-0802', 'B-0302', 'B-1203', 'C-0701', 'C-1502', 'D-0405', 'D-1008', 'A-0604', 'B-0501', 'C-0903', 'D-1201'].map((number, i) => ({ _id: `f${i}`, number, tower: number[0] }));
   const flat = (n) => flats.find((f) => f.number === n);
   const mk = (id, name, email, phone, role, flatNo) => ({ _id: id, name, email, phone, role, isActive: true, flatId: flatNo ? flat(flatNo) : undefined });
   const users = [
     mk('u1', 'Priya Sharma', 'priya.sharma@slotdrop.in', '9820011201', 'resident', 'A-1204'),
     mk('u2', 'Rohan Mehta', 'rohan.mehta@slotdrop.in', '9820011202', 'resident', 'A-1101'),
     mk('u3', 'Meera Iyer', 'meera.iyer@slotdrop.in', '9820011203', 'resident', 'B-0904'),
+    mk('u4', 'Ananya Reddy', 'ananya.reddy@slotdrop.in', '9820011204', 'resident', 'A-0802'),
+    mk('u5', 'Arjun Nair', 'arjun.nair@slotdrop.in', '9820011205', 'resident', 'B-0302'),
+    mk('u6', 'Kavya Menon', 'kavya.menon@slotdrop.in', '9820011206', 'resident', 'B-1203'),
+    mk('u7', 'Vikram Singh', 'vikram.singh@slotdrop.in', '9820011207', 'resident', 'C-0701'),
+    mk('u8', 'Sneha Kulkarni', 'sneha.kulkarni@slotdrop.in', '9820011208', 'resident', 'C-1502'),
+    mk('u9', 'Aditya Joshi', 'aditya.joshi@slotdrop.in', '9820011209', 'resident', 'D-0405'),
+    mk('u10', 'Pooja Bansal', 'pooja.bansal@slotdrop.in', '9820011210', 'resident', 'D-1008'),
     mk('g1', 'Ramesh Kumar', 'guard1@slotdrop.in', '9820011301', 'guard'),
+    mk('g2', 'Suresh Yadav', 'guard2@slotdrop.in', '9820011302', 'guard'),
     mk('a1', 'Anita Deshmukh', 'admin@slotdrop.in', '9820011401', 'admin'),
   ];
 
@@ -94,7 +102,7 @@ function seed() {
   for (let i = 0; i < 62; i += 1) {
     const ago = 1 + Math.floor(rnd() * 29);
     const key = addDaysKey(today, -ago);
-    const f = flats[1 + Math.floor(rnd() * (flats.length - 1))];
+    const f = flats[1 + Math.floor(rnd() * 9)]; // only flats that have residents
     const receivedAt = istToIso(key, 9 + Math.floor(rnd() * 10));
     const parcel = { _id: `h${i}`, flatId: f, courier: COURIER_POOL[Math.floor(rnd() * COURIER_POOL.length)], shelfId: `S-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}`, status: 'RECEIVED', receivedAt };
     const stale = ago > 2 && rnd() < 0.08; // a handful that nobody collected
@@ -138,7 +146,7 @@ const err = (status, code, message) => new ApiError(status, code, message);
 const currentUser = () => {
   const id = sessionStorage.getItem('slotdrop-token')?.replace('mock-', '');
   const u = db.users.find((x) => x._id === id);
-  if (!u) throw err(401, 'UNAUTHORIZED', 'Please sign in again.');
+  if (!u || !u.isActive) throw err(401, 'UNAUTHORIZED', 'Please sign in again.'); // deactivated users lose access immediately
   return u;
 };
 const need = (...roles) => { const u = currentUser(); if (!roles.includes(u.role)) throw err(403, 'FORBIDDEN', 'You do not have access to this.'); return u; };
@@ -173,7 +181,7 @@ export const mockApi = {
   async login(identifier, password) {
     await latency();
     const u = db.users.find((x) => x.email === identifier.toLowerCase() || x.phone === identifier);
-    if (!u || password !== DEMO_PASSWORD) throw err(401, 'INVALID_CREDENTIALS', 'Email/phone or password is incorrect.');
+    if (!u || !u.isActive || password !== (u.password || DEMO_PASSWORD)) throw err(401, 'INVALID_CREDENTIALS', 'Email/phone or password is incorrect.');
     return { token: `mock-${u._id}`, user: clone(u) };
   },
   async me() { await latency(); return { user: clone(currentUser()) }; },
@@ -330,6 +338,47 @@ export const mockApi = {
     save();
     emit('parcel:updated', { parcelId: parcel._id, flatId: parcel.flatId._id, status: 'DELIVERED' });
     return { parcel: clone(withVirtuals(parcel)), deliveredTo: delegation ? delegation.delegateName : 'resident', via: qrToken ? 'qr' : delegation ? 'delegate' : 'otp' };
+  },
+
+  // ---- admin: people & flats ----
+  async listUsers() {
+    await latency();
+    need('admin');
+    return clone(db.users.map(({ password, ...u }) => u));
+  },
+  async setUserActive(id, isActive) {
+    await latency();
+    const admin = need('admin');
+    if (id === admin._id) throw err(400, 'BAD_REQUEST', 'You cannot deactivate your own account.');
+    const u = db.users.find((x) => x._id === id);
+    if (!u) throw err(404, 'NOT_FOUND', 'User not found.');
+    u.isActive = isActive; save();
+    const { password, ...safe } = u;
+    return clone(safe);
+  },
+  async registerUser({ name, email, phone, password, role, flatId }) {
+    await latency();
+    need('admin');
+    if (!/^[6-9]\d{9}$/.test(phone)) throw err(400, 'VALIDATION_ERROR', 'Enter a 10-digit Indian mobile number.');
+    if (password.length < 8) throw err(400, 'VALIDATION_ERROR', 'Use at least 8 characters for the password.');
+    if (role === 'resident' && !flatId) throw err(400, 'VALIDATION_ERROR', 'Residents need a flat.');
+    if (db.users.some((u) => u.email === email.toLowerCase())) throw err(409, 'DUPLICATE', 'That email is already in use.');
+    if (db.users.some((u) => u.phone === phone)) throw err(409, 'DUPLICATE', 'That phone is already in use.');
+    const flat = flatId ? db.flats.find((f) => f._id === flatId) : undefined;
+    const user = { _id: `u${uid()}`, name, email: email.toLowerCase(), phone, role, isActive: true, password, ...(flat ? { flatId: flat } : {}) };
+    db.users.push(user); save();
+    const { password: _pw, ...safe } = user;
+    return clone(safe);
+  },
+  async listFlats() { await latency(); need('admin'); return clone([...db.flats].sort((a, b) => a.number.localeCompare(b.number))); },
+  async createFlat({ tower, number, floor }) {
+    await latency();
+    need('admin');
+    if (!/^[A-Za-z]-\d{3,4}$/.test(number)) throw err(400, 'VALIDATION_ERROR', 'Use a format like A-1204.');
+    if (db.flats.some((f) => f.number === number.toUpperCase())) throw err(409, 'DUPLICATE', 'That flat already exists.');
+    const flat = { _id: `f${uid()}`, tower: tower.toUpperCase(), number: number.toUpperCase(), ...(floor != null ? { floor } : {}) };
+    db.flats.push(flat); save();
+    return clone(flat);
   },
 
   // ---- admin ----

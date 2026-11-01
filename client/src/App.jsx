@@ -14,6 +14,7 @@ import QuickLog from '@/pages/guard/QuickLog';
 import Handover from '@/pages/guard/Handover';
 import Schedule from '@/pages/guard/Schedule';
 import Dashboard from '@/pages/admin/Dashboard';
+import Users from '@/pages/admin/Users';
 
 // Residents share one parcels store across Home / SlotPicker / History / Booking so state stays consistent.
 const ResidentLayout = () => <ParcelsProvider><Outlet /></ParcelsProvider>;
@@ -41,6 +42,7 @@ export default function App() {
           </Route>
           <Route element={<RequireRole roles={['admin']} />}>
             <Route path="/admin" element={<Dashboard />} />
+            <Route path="/admin/users" element={<Users />} />
           </Route>
         </Route>
       </Route>

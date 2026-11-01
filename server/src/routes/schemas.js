@@ -81,3 +81,7 @@ Object.assign(module.exports, { delegateBody, handoverBody });
 
 const analyticsQuery = z.object({ range: z.coerce.number().refine((n) => [7, 14, 30].includes(n), 'range must be 7, 14 or 30').default(14) });
 Object.assign(module.exports, { analyticsQuery });
+
+// Validated (not passed through) so `?role[$ne]=x` can never reach the database as an operator.
+const usersQuery = z.object({ role: z.enum(Object.values(ROLES)).optional() });
+Object.assign(module.exports, { usersQuery });

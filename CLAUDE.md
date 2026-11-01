@@ -46,16 +46,20 @@ After every step: run app/tests, fix errors, check 375px and 1280px, commit, giv
 README (setup, API docs, Mermaid architecture + ER), deployment guide, 5-min demo script with logins, 15 viva Q&A, project report draft.
 
 ## Known environment limitation (sandbox)
-`fastdl.mongodb.org` is blocked by the cloud sandbox network policy, so `mongodb-memory-server` cannot download its binary and **DB-backed Jest tests cannot run here** (`rbac.test.js`, `booking.capacity.test.js`, `otp.verification.test.js`). Only the DB-free tests run: `npm run test:nodb` (smoke, dates, otp.unit, insights.unit). Also unrun: `admin.test.js`. DB-backed tests are written but UNVERIFIED until run where MongoDB is reachable (local machine, CI, or after allowing the host). Do not claim they pass. Run them with `cd server && npm test`.
+`fastdl.mongodb.org` is blocked by the cloud sandbox network policy, so `mongodb-memory-server` cannot download its binary and **DB-backed Jest tests cannot run here** (`rbac.test.js`, `booking.capacity.test.js`, `otp.verification.test.js`). Only the DB-free tests run: `npm run test:nodb` (smoke, dates, otp.unit, insights.unit, seed.unit, validation.unit). Also unrun: `admin.test.js`. DB-backed tests are written but UNVERIFIED until run where MongoDB is reachable (local machine, CI, or after allowing the host). Do not claim they pass. Run them with `cd server && npm test`.
 
 ## Client modes and testing (Step 6)
 - `VITE_API_MODE=mock` runs the whole client against an in-browser mock API (`client/src/mocks/mockApi.js`, mirrors server shapes/error codes, synced across tabs via BroadcastChannel). `VITE_API_MODE=api` (default) talks to the Express server. Both implement the same interface in `client/src/lib/api.js`; keep them in sync when the server contract changes.
 - Auth token lives in **sessionStorage** (per tab) so a guard and a resident can be signed in side by side in one browser for demos.
-- Regression run (mock mode, no server): `cd client && VITE_API_MODE=mock npx vite --host 127.0.0.1 &` then `node scripts/e2e-mock.cjs /tmp/e2e` (58 checks: resident/guard/admin flows, realtime, RBAC, charts and capacity manager, 375px/1280px overflow, 44px tap targets, console errors).
+- Regression run (mock mode, no server): `cd client && VITE_API_MODE=mock npx vite --host 127.0.0.1 &` then `node scripts/e2e-mock.cjs /tmp/e2e` (72 checks: resident/guard/admin flows, users and flats, realtime, RBAC, charts and capacity manager, 375px/1280px overflow, 44px tap targets, console errors).
 - The real-API wiring (`realApi.js`, Socket.io) is checked against server response shapes by reading code, but is **not yet run end to end** because the sandbox has no MongoDB. Verify on a machine with MongoDB.
 
 ## Dashboard and suggestions (Step 7)
 - Smart suggestion: `server/src/services/suggestionService.js` (recency-weighted pickup-hour histogram, 30-day half-life, neighbour smoothing, min 25% of best score, fallback to least-loaded slot). Ported 1:1 to the mock API; keep both in sync.
 - Analytics: `analyticsService.buildAnalytics` is pure (unit tested); `getAnalytics` only fetches rows. Slot-window edits go through `slotService.syncToTemplates` (never deletes slots that have bookings).
 - Charts follow the dataviz rules: single series in the `--primary` token, thin marks, hairline grid, tooltip on hover, text summary + table view per chart, one date-range filter row that scopes everything, dimmed (not skeleton) while refetching.
-- Not built yet: admin Users/Flats management page (API exists: `GET /users`, `PATCH /users/:id/active`, `POST /auth/register`, `/flats`).
+
+## Seed, users and hardening (Step 8)
+- `npm run seed` (server) wipes and loads demo data: 1 admin, 2 guards, 10 residents, 14 flats, 30 parcels, 22 bookings, ~200 slots (10 days of history + a week ahead). Refuses to run when NODE_ENV=production unless `--force`. **Not run in the sandbox** (no MongoDB); the data builder (`seed/seedData.js`) is pure and covered by `seed.unit.test.js` (relationships, counts, schema validation at four clock times).
+- Demo logins (password `SlotDrop@123`): priya.sharma@slotdrop.in (resident, A-1204), guard1@slotdrop.in, admin@slotdrop.in.
+- Hardening fixes: `GET /users` validated its role filter (operator injection), default slot windows on first boot, refresh-race guards (ParcelsContext, capacity manager), scanner re-read cooldown (Handover). The cooldown needs a real camera to verify and has not been exercised.

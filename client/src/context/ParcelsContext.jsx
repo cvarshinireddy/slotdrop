@@ -10,11 +10,14 @@ export function ParcelsProvider({ children }) {
   const [slotByParcel, setSlotByParcel] = useState({}); // parcelId -> { bookingId, slot }
   const [freshIds, setFreshIds] = useState(() => new Set()); // parcels that just arrived (for the entry highlight)
   const known = useRef(new Set());
+  const ticket = useRef(0); // overlapping refreshes (e.g. two realtime events) must not let an older response win
 
   const refresh = useCallback(async ({ silent = false } = {}) => {
+    const mine = ++ticket.current;
     if (!silent) setStatus('loading');
     try {
       const [list, bookings] = await Promise.all([api.listParcels(), api.listBookings()]);
+      if (mine !== ticket.current) return; // a newer refresh is in flight; its result is the one to show
       setSlotByParcel(Object.fromEntries(bookings.filter((b) => b.status === 'ACTIVE').map((b) => [b.parcelId, { bookingId: b._id, slot: b.slotId }])));
       const arrived = list.filter((p) => known.current.size && !known.current.has(p._id)).map((p) => p._id);
       known.current = new Set(list.map((p) => p._id));
@@ -25,7 +28,7 @@ export function ParcelsProvider({ children }) {
         setTimeout(() => setFreshIds((s) => new Set([...s].filter((id) => !arrived.includes(id)))), 4000);
       }
     } catch {
-      if (!silent) setStatus('error');
+      if (!silent && mine === ticket.current) setStatus('error');
     }
   }, []);
 

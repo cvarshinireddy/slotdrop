@@ -82,4 +82,15 @@ async function syncToTemplates(days = 7, from = new Date()) {
   return generateSlots(days, from);
 }
 
-module.exports = { generateSlots, syncToTemplates, unavailableReason, listForDate };
+const DEFAULT_WINDOWS = Array.from({ length: 12 }, (_, i) => ({
+  startTime: `${String(9 + i).padStart(2, '0')}:00`, endTime: `${String(10 + i).padStart(2, '0')}:00`, capacity: 9 + i >= 18 ? 6 : 4,
+}));
+
+// First boot on an empty database: 9 AM - 9 PM hourly windows so the app is usable before an admin customises them.
+async function ensureDefaultTemplates() {
+  if (await SlotTemplate.estimatedDocumentCount()) return false;
+  await SlotTemplate.insertMany(DEFAULT_WINDOWS);
+  return true;
+}
+
+module.exports = { DEFAULT_WINDOWS, ensureDefaultTemplates, generateSlots, syncToTemplates, unavailableReason, listForDate };

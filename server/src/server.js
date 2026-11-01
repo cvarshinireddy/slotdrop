@@ -5,10 +5,11 @@ const app = require('./app');
 const sockets = require('./sockets');
 const reminderJob = require('./jobs/reminderJob');
 const slotGenerationJob = require('./jobs/slotGenerationJob');
-const { generateSlots } = require('./services/slotService');
+const { generateSlots, ensureDefaultTemplates } = require('./services/slotService');
 
 async function main() {
   await connectDB();
+  await ensureDefaultTemplates();
   await generateSlots(7); // make sure today's slots exist on boot
   const server = http.createServer(app);
   sockets.init(server);

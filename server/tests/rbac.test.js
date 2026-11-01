@@ -78,3 +78,17 @@ describe('role-based access', () => {
     expect(u.passwordHash).not.toContain('Passw0rd');
   });
 });
+
+describe('input hardening', () => {
+  test('operator injection in the users filter is rejected (400), not passed to MongoDB', async () => {
+    const res = await request(app).get('/api/users?role[$ne]=admin').set(ctx.h.admin);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect((await request(app).get('/api/users?role=guard').set(ctx.h.admin)).status).toBe(200);
+  });
+
+  test('login with operator objects is rejected before any query runs', async () => {
+    const res = await request(app).post('/api/auth/login').send({ identifier: { $ne: '' }, password: { $ne: '' } });
+    expect(res.status).toBe(400);
+  });
+});

@@ -10,3 +10,4 @@ export { Modal } from './Modal';
 export { Skeleton, ParcelCardSkeleton } from './Skeleton';
 export { CourierBadge } from './CourierBadge';
 export { StatTile } from './StatTile';
+export { Switch } from './Switch';

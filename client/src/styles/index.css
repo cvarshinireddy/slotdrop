@@ -1,0 +1,35 @@
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/figtree';
+@import '@fontsource-variable/jetbrains-mono';
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { color-scheme: light; -webkit-text-size-adjust: 100%; }
+  /* WCAG 2.2 "focus not obscured": keep focused/scrolled-to elements clear of the sticky header (top) and the
+     fixed tab bar + confirm bar (bottom) on mobile. On desktop the tab bar does not exist. */
+  html { scroll-padding-top: 4.5rem; scroll-padding-bottom: 9rem; }
+  @media (min-width: 1024px) { html { scroll-padding-top: 1rem; scroll-padding-bottom: 5rem; } }
+  html.dark { color-scheme: dark; }
+  body {
+    @apply bg-background font-sans text-base text-foreground antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  h1, h2, h3, h4 { @apply font-display tracking-tight; }
+  /* One visible focus style everywhere (WCAG 2.4.7) */
+  :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+  ::selection { background: hsl(var(--primary) / 0.2); }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+}
+
+/* Respect reduced motion for CSS animations too (Framer is handled by <MotionConfig reducedMotion="user">) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

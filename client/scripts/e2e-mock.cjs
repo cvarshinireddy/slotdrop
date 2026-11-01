@@ -35,7 +35,7 @@ async function login(page, role) {
   // ---------- resident ----------
   const res = await ctx.newPage(); watch(res, 'resident');
   await res.goto(`${BASE}/login`);
-  await res.evaluate(() => window.__slotdropMock?.reset && localStorage.removeItem('slotdrop-mock-db-v1'));
+  await res.evaluate(() => window.__slotdropMock?.reset && localStorage.removeItem('slotdrop-mock-db-v2'));
   await login(res, 'Resident');
   await res.getByRole('heading', { name: /^Good (morning|afternoon|evening), Priya/ }).waitFor();
   await res.waitForSelector('article');
@@ -49,6 +49,7 @@ async function login(page, role) {
   await res.getByRole('button', { name: 'Tomorrow' }).click();
   await res.waitForSelector('section[aria-labelledby=slots-h] button');
   check('picker: suggested badge visible', (await res.getByText('Suggested for you').count()) >= 1);
+  check('picker: suggestion explained (history-based)', (await res.getByText('Suggested based on when you usually collect.').count()) === 1);
   check('picker: some slot disabled with reason', (await res.getByText('Fully booked').count()) >= 1);
   const firstOpen = res.locator('section[aria-labelledby=slots-h] button:not([aria-disabled])').first();
   await firstOpen.click();
@@ -167,6 +168,69 @@ async function login(page, role) {
   await res.waitForURL(`${BASE}/`);
   check('RBAC: resident bounced from guard route', true);
 
+
+  // ---------- admin dashboard ----------
+  const a = await ctx.newPage(); watch(a, 'admin');
+  await login(a, 'Admin');
+  await a.getByRole('heading', { name: 'Dashboard', level: 1 }).waitFor();
+  await a.waitForSelector('svg.recharts-surface');
+  await a.waitForTimeout(400);
+  check('admin: 4 KPI tiles', (await a.getByText(/^(Parcels received|Delivered|Avg pickup time|Uncollected now)$/).count()) === 4);
+  check('admin: both charts rendered', (await a.locator('svg.recharts-surface').count()) >= 2);
+  const lineSvg = a.locator('section', { hasText: 'Parcels per day' }).locator('svg.recharts-surface').first();
+  await lineSvg.scrollIntoViewIfNeeded(); await a.evaluate(() => window.scrollBy(0, 150)); // keep the hover point clear of the fixed tab bar
+  const lineBox = await lineSvg.boundingBox();
+  await a.mouse.move(lineBox.x + lineBox.width * 0.6, lineBox.y + lineBox.height * 0.5);
+  await a.waitForTimeout(250);
+  check('admin: line chart tooltip on hover (value leads)', /parcels?/.test(await a.locator('.recharts-tooltip-wrapper').first().innerText()));
+  await a.screenshot({ path: `${OUT}/admin-375.png`, fullPage: true });
+  await audit(a, 'admin');
+  // table view = same numbers without hover
+  await a.locator('section', { hasText: 'Parcels per day' }).getByRole('button', { name: 'Table' }).click();
+  check('admin: table view shows 14 days', (await a.locator('section', { hasText: 'Parcels per day' }).locator('tbody tr').count()) === 14);
+  await a.getByRole('button', { name: 'Last 30 days' }).click();
+  await a.waitForFunction(() => document.querySelectorAll('section tbody tr').length === 30, null, { timeout: 5000 }).catch(() => {});
+  check('admin: date range filter rescopes the chart (30 rows)', (await a.locator('section', { hasText: 'Parcels per day' }).locator('tbody tr').count()) === 30);
+  check('admin: filter button exposes pressed state', (await a.getByRole('button', { name: 'Last 30 days' }).getAttribute('aria-pressed')) === 'true');
+  await a.locator('section', { hasText: 'Parcels per day' }).getByRole('button', { name: 'Chart' }).click();
+  check('admin: uncollected list populated', (await a.locator('section', { hasText: 'Uncollected parcels' }).locator('li').count()) >= 1);
+
+  // capacity manager: a full slot cannot be reduced below its bookings; changes reach residents
+  const cap = a.locator('section', { hasText: 'Slot capacity' });
+  await cap.getByRole('group', { name: 'Choose a day' }).getByRole('button').nth(1).click();
+  await cap.locator('li').first().waitFor();
+  check('capacity: stepper blocks going below booked seats', (await cap.locator('button[aria-label="Decrease capacity"]:disabled').count()) >= 1);
+  const row = cap.locator('li').nth(1);
+  const before = Number((await row.locator('span.tabular-nums').textContent()).trim());
+  await row.getByRole('button', { name: 'Increase capacity' }).click();
+  await a.waitForTimeout(500);
+  check('capacity: increase applies', Number((await cap.locator('li').nth(1).locator('span.tabular-nums').textContent()).trim()) === before + 1);
+  await cap.locator('li').nth(2).getByRole('button', { name: 'Close slot' }).click();
+  await a.waitForTimeout(500);
+  check('capacity: closed slot shows Closed badge', (await cap.getByText('Closed', { exact: true }).count()) === 1);
+  // resident sees it immediately (same mock backend, other tab)
+  await res.goto(`${BASE}/`); await res.waitForSelector('article');
+  await res.locator('article', { hasText: 'Myntra' }).getByRole('link', { name: 'Choose a slot' }).click();
+  await res.getByRole('button', { name: 'Tomorrow' }).click();
+  await res.waitForSelector('section[aria-labelledby=slots-h] button');
+  check('capacity: closed slot disabled for residents with reason', (await res.getByText('Closed by society office').count()) === 1);
+  // windows editor: overlap blocked client-side, valid save works
+  await cap.getByRole('button', { name: 'Edit windows' }).click();
+  const dlg = a.getByRole('dialog');
+  await dlg.getByLabel('Window 2 start').waitFor();
+  await dlg.getByLabel('Window 2 start').fill('09:30');
+  check('windows: overlap shows error and disables save', (await dlg.getByText('Time windows must not overlap.').count()) === 1 && await dlg.getByRole('button', { name: 'Save windows' }).isDisabled());
+  await dlg.getByLabel('Window 2 start').fill('10:00');
+  await dlg.getByLabel('Window 1 capacity').fill('5');
+  await dlg.getByRole('button', { name: 'Save windows' }).click();
+  await a.getByText('Time windows saved').waitFor();
+  check('windows: valid edit saves', true);
+
+  // role protection for admin pages
+  await res.goto(`${BASE}/admin`);
+  await res.waitForURL(`${BASE}/`);
+  check('RBAC: resident bounced from admin dashboard', true);
+
   // ---------- desktop + dark ----------
   const d = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark' });
   const dp = await d.newPage(); watch(dp, 'desktop');
@@ -182,6 +246,10 @@ async function login(page, role) {
   await dg.screenshot({ path: `${OUT}/quicklog-1280-dark.png` });
   await dg.goto(`${BASE}/guard/schedule`); await dg.waitForSelector('ol li');
   await dg.screenshot({ path: `${OUT}/schedule-1280-dark.png`, fullPage: true });
+  const da = await d.newPage(); watch(da, 'desktop-admin');
+  await login(da, 'Admin'); await da.waitForSelector('svg.recharts-surface'); await da.waitForTimeout(500);
+  await audit(da, 'desktop-admin');
+  await da.screenshot({ path: `${OUT}/admin-1280-dark.png`, fullPage: true });
 
   const real = errors.filter((e) => !/getUserMedia|NotFoundError|NotAllowedError|Requested device not found|Permission/i.test(e));
   check('no console/page errors', real.length === 0, real.slice(0, 3).join(' | '));

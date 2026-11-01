@@ -18,4 +18,7 @@ function addDays(dateKey, n) {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
-module.exports = { istToDate, toDateKey, addDays, IST_OFFSET_MS };
+// Hour of day (0-23) in IST for a given instant
+const istHour = (date) => new Date(new Date(date).getTime() + IST_OFFSET_MS).getUTCHours();
+
+module.exports = { istToDate, toDateKey, addDays, istHour, IST_OFFSET_MS };

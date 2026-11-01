@@ -6,6 +6,7 @@ const validate = require('../middleware/validate');
 const s = require('./schemas');
 
 router.use(authenticate, requireRole('admin'));
+router.get('/analytics', validate({ query: s.analyticsQuery }), c.analytics);
 router.get('/slot-templates', c.listTemplates);
 router.put('/slot-templates', validate({ body: s.templatesBody }), c.replaceTemplates);
 

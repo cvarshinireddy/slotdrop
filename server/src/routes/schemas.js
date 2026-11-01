@@ -51,7 +51,11 @@ const templatesBody = z.object({
     .array(z.object({ startTime: hhmm, endTime: hhmm, capacity: z.number().int().min(1).max(100) })
       .refine((t) => t.startTime < t.endTime, { message: 'End must be after start' }))
     .min(1).max(24),
-});
+}).refine((v) => {
+  // windows must not overlap (touching is fine: 9-10 then 10-11)
+  const sorted = [...v.templates].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  return sorted.every((t, i) => i === 0 || sorted[i - 1].endTime <= t.startTime);
+}, { message: 'Time windows must not overlap', path: ['templates'] });
 const bookingBody = z.object({ parcelId: objectId, slotId: objectId });
 
 Object.assign(module.exports, { parcelBody, parcelListQuery, slotsQuery, slotPatchBody, templatesBody, bookingBody });
@@ -74,3 +78,6 @@ const handoverBody = z
   });
 
 Object.assign(module.exports, { delegateBody, handoverBody });
+
+const analyticsQuery = z.object({ range: z.coerce.number().refine((n) => [7, 14, 30].includes(n), 'range must be 7, 14 or 30').default(14) });
+Object.assign(module.exports, { analyticsQuery });

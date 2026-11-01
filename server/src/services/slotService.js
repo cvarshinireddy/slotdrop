@@ -45,8 +45,41 @@ async function listForDate(dateKey, now = new Date()) {
     ...s,
     remaining: Math.max(0, s.capacity - s.booked),
     reason: unavailableReason(s, now),
-    suggested: false, // filled by suggestionService in Step 7
+    suggested: false, // set by suggestionService.annotate for residents
+    suggestedReason: null,
   }));
 }
 
-module.exports = { generateSlots, unavailableReason, listForDate };
+/**
+ * Make the next `days` days match the current templates after an admin edit:
+ *  - capacity/end time follow the template (never below seats already booked)
+ *  - future, completely unbooked slots whose window no longer exists are removed
+ *  - missing windows are generated
+ * Slots with bookings are never deleted, so no resident loses a booked slot to an admin edit.
+ */
+async function syncToTemplates(days = 7, from = new Date()) {
+  const templates = await SlotTemplate.find({ isActive: true });
+  const start = toDateKey(from);
+  const end = addDays(start, days - 1);
+  const valid = [];
+  const ops = [];
+  for (let i = 0; i < days; i += 1) {
+    const dateKey = addDays(start, i);
+    for (const t of templates) {
+      const startsAt = istToDate(dateKey, t.startTime);
+      valid.push(startsAt);
+      ops.push({
+        updateOne: {
+          // one condition object: a duplicate `startsAt` key would silently overwrite the exact-match filter
+          filter: { dateKey, startsAt: { $eq: startsAt, $gt: from }, booked: { $lte: t.capacity } },
+          update: { $set: { capacity: t.capacity, endsAt: istToDate(dateKey, t.endTime) } },
+        },
+      });
+    }
+  }
+  if (ops.length) await Slot.bulkWrite(ops, { ordered: false });
+  await Slot.deleteMany({ dateKey: { $gte: start, $lte: end }, startsAt: { $gt: from, $nin: valid }, booked: 0 });
+  return generateSlots(days, from);
+}
+
+module.exports = { generateSlots, syncToTemplates, unavailableReason, listForDate };

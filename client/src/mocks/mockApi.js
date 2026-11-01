@@ -5,7 +5,7 @@ import QRCode from 'qrcode';
 import { ApiError } from '../lib/realApi';
 import { addDaysKey, dateKey } from '../lib/format';
 
-const KEY = 'slotdrop-mock-db-v1';
+const KEY = 'slotdrop-mock-db-v2';
 const MAX_ATTEMPTS = 5;
 const IST = 5.5 * 3600 * 1000;
 const H = 3600 * 1000;
@@ -66,8 +66,8 @@ function seed() {
     P('p1', 'A-1204', 'Amazon', 'S-12', 2),
     P('p2', 'A-1204', 'Flipkart', 'S-04', 20),
     P('p3', 'A-1204', 'Myntra', 'S-07', 75),
-    P('p4', 'A-1204', 'Blinkit', 'S-01', 120, 'DELIVERED', { deliveredAt: new Date(now - 96 * H).toISOString() }),
-    P('p5', 'A-1204', 'Delhivery', 'S-09', 200, 'DELIVERED', { deliveredAt: new Date(now - 170 * H).toISOString() }),
+    P('p4', 'A-1204', 'Blinkit', 'S-01', 120, 'DELIVERED', { deliveredAt: istToIso(addDaysKey(today, -4), 19) }),
+    P('p5', 'A-1204', 'Delhivery', 'S-09', 200, 'DELIVERED', { deliveredAt: istToIso(addDaysKey(today, -8), 19) }),
     P('p6', 'A-1101', 'Swiggy Instamart', 'S-02', 3),
     P('p7', 'B-0904', 'Zomato', 'S-03', 1),
     P('p8', 'C-0701', 'BlueDart', 'S-11', 30),
@@ -85,15 +85,39 @@ function seed() {
     bookings.push({ _id: `b${i}`, parcelId: pid, slotId: slot._id, residentId: uidv, status: 'ACTIVE', otp: String(100000 + ((i + 1) * 271828) % 900000), otpAttempts: 0, otpExpiresAt: new Date(new Date(slot.endsAt).getTime() + 2 * H).toISOString(), bookedAt: new Date(now - H).toISOString() });
   });
 
+  // ~60 parcels over the last 30 days for the other flats, so the admin charts have a story to tell.
+  // Pickups cluster in the evening (the society's real peak). Deterministic LCG: same data on every reload.
+  let seedN = 7;
+  const rnd = () => { seedN = (seedN * 1664525 + 1013904223) % 4294967296; return seedN / 4294967296; };
+  const PICK_HOURS = [18, 19, 19, 20, 18, 17, 19, 12, 9, 10, 20, 18];
+  const COURIER_POOL = ['Amazon', 'Flipkart', 'Swiggy Instamart', 'Blinkit', 'Zomato', 'Myntra', 'Delhivery', 'BlueDart'];
+  for (let i = 0; i < 62; i += 1) {
+    const ago = 1 + Math.floor(rnd() * 29);
+    const key = addDaysKey(today, -ago);
+    const f = flats[1 + Math.floor(rnd() * (flats.length - 1))];
+    const receivedAt = istToIso(key, 9 + Math.floor(rnd() * 10));
+    const parcel = { _id: `h${i}`, flatId: f, courier: COURIER_POOL[Math.floor(rnd() * COURIER_POOL.length)], shelfId: `S-${String(1 + Math.floor(rnd() * 12)).padStart(2, '0')}`, status: 'RECEIVED', receivedAt };
+    const stale = ago > 2 && rnd() < 0.08; // a handful that nobody collected
+    if (!stale && ago >= 1) {
+      const deliverKey = addDaysKey(key, rnd() < 0.7 ? 0 : 1 + Math.floor(rnd() * 2));
+      const deliveredAt = istToIso(deliverKey, PICK_HOURS[Math.floor(rnd() * PICK_HOURS.length)]);
+      const ok = new Date(deliveredAt) > new Date(receivedAt) && new Date(deliveredAt) < new Date(now);
+      parcel.status = 'DELIVERED';
+      parcel.deliveredAt = ok ? deliveredAt : new Date(new Date(receivedAt).getTime() + 4 * H).toISOString(); // plausible fallback: collected a few hours later
+    }
+    parcels.push(parcel);
+  }
+
   const notifications = [
     { _id: 'n1', userId: 'u1', type: 'parcel_received', title: 'Your Amazon parcel is at the gate', body: 'When should we hand it over? Pick a slot that suits you.', parcelId: 'p1', createdAt: new Date(now - 2 * H).toISOString() },
     { _id: 'n2', userId: 'u1', type: 'reminder', title: 'Your Myntra parcel is still waiting', body: 'It has been at the gate for over 2 days. Pick a slot so we can hand it over.', parcelId: 'p3', createdAt: new Date(now - 5 * H).toISOString() },
   ];
   const timelines = {
-    p4: [['RECEIVED', 120], ['SLOT_BOOKED', 110], ['DELIVERED', 96]].map(([action, h]) => ({ action, at: new Date(now - h * H).toISOString() })),
-    p5: [['RECEIVED', 200], ['SLOT_BOOKED', 190], ['DELIVERED', 170]].map(([action, h]) => ({ action, at: new Date(now - h * H).toISOString() })),
+    p4: [['RECEIVED', 120], ['SLOT_BOOKED', 110]].map(([action, h]) => ({ action, at: new Date(now - h * H).toISOString() })).concat({ action: 'DELIVERED', at: istToIso(addDaysKey(today, -4), 19) }),
+    p5: [['RECEIVED', 200], ['SLOT_BOOKED', 190]].map(([action, h]) => ({ action, at: new Date(now - h * H).toISOString() })).concat({ action: 'DELIVERED', at: istToIso(addDaysKey(today, -8), 19) }),
   };
-  return { v: 1, day: today, users, flats, slots, parcels, bookings, delegations: [], notifications, timelines };
+  const templates = Array.from({ length: 12 }, (_, i) => ({ startTime: `${String(9 + i).padStart(2, '0')}:00`, endTime: `${String(10 + i).padStart(2, '0')}:00`, capacity: 9 + i >= 18 ? 6 : 4 }));
+  return { v: 2, day: today, users, flats, slots, parcels, bookings, delegations: [], notifications, timelines, templates };
 }
 
 function load() {
@@ -125,6 +149,24 @@ const notify = (userId, n) => { const x = { _id: uid(), userId, createdAt: new D
 const residentsOf = (flatId) => db.users.filter((u) => u.role === 'resident' && u.flatId?._id === flatId);
 const slotOf = (id) => db.slots.find((s) => s._id === id);
 const parcelOf = (id) => db.parcels.find((p) => p._id === id);
+
+// Port of server/src/services/suggestionService.js: recency-weighted pickup-hour histogram + neighbour smoothing.
+const hourOf = (iso) => new Date(new Date(iso).getTime() + IST).getUTCHours();
+function suggest(slots, user) {
+  const w = {};
+  db.parcels.filter((p) => p.status === 'DELIVERED' && p.flatId._id === user.flatId._id).forEach((p) => {
+    const age = Math.max(0, (Date.now() - new Date(p.deliveredAt)) / (24 * H));
+    w[hourOf(p.deliveredAt)] = (w[hourOf(p.deliveredAt)] || 0) + 0.5 ** (age / 30);
+  });
+  const g = (h) => w[h] || 0;
+  const open = slots.filter((s) => !s.reason);
+  const scored = open.map((s) => ({ s, score: g(hourOf(s.startsAt)) + 0.5 * (g(hourOf(s.startsAt) - 1) + g(hourOf(s.startsAt) + 1)) }))
+    .filter((x) => x.score > 0).sort((a, b) => b.score - a.score || a.s.booked / a.s.capacity - b.s.booked / b.s.capacity);
+  let ids; let why = 'history';
+  if (scored.length) ids = new Set(scored.filter((x) => x.score >= scored[0].score * 0.25).slice(0, 2).map((x) => x.s._id));
+  else { why = 'quiet'; ids = new Set([...open].sort((a, b) => a.booked / a.capacity - b.booked / b.capacity)[0] ? [[...open].sort((a, b) => a.booked / a.capacity - b.booked / b.capacity)[0]._id] : []); }
+  return slots.map((s) => (ids.has(s._id) ? { ...s, suggested: true, suggestedReason: why } : s));
+}
 
 // ---- API ----------------------------------------------------------------------------------------
 export const mockApi = {
@@ -173,8 +215,8 @@ export const mockApi = {
     await latency();
     currentUser();
     const slots = db.slots.filter((s) => s.dateKey === (date || dateKey())).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-    // "suggested": the mock pretends this resident usually collects around 6-8 PM
-    return clone(slots.map((s) => ({ ...s, remaining: Math.max(0, s.capacity - s.booked), reason: reason(s), suggested: !reason(s) && [18, 19].includes(Number(new Date(new Date(s.startsAt).getTime() + IST).getUTCHours())) })));
+    const decorated = slots.map((s) => ({ ...s, remaining: Math.max(0, s.capacity - s.booked), reason: reason(s), suggested: false, suggestedReason: null }));
+    return clone(currentUser().role === 'resident' ? suggest(decorated, currentUser()) : decorated);
   },
   async todaySchedule() {
     await latency();
@@ -288,6 +330,79 @@ export const mockApi = {
     save();
     emit('parcel:updated', { parcelId: parcel._id, flatId: parcel.flatId._id, status: 'DELIVERED' });
     return { parcel: clone(withVirtuals(parcel)), deliveredTo: delegation ? delegation.delegateName : 'resident', via: qrToken ? 'qr' : delegation ? 'delegate' : 'otp' };
+  },
+
+  // ---- admin ----
+  async analytics(days = 14) {
+    await latency();
+    need('admin');
+    const today = dateKey();
+    const firstKey = addDaysKey(today, -(days - 1));
+    const start = new Date(istToIso(firstKey, 0)); const prevStart = new Date(istToIso(addDaysKey(firstKey, -days), 0)); const now = new Date();
+    const keys = Array.from({ length: days }, (_, i) => addDaysKey(firstKey, i));
+    const perDay = Object.fromEntries(keys.map((k) => [k, { date: k, received: 0, delivered: 0 }]));
+    let rc = 0; let rp = 0; let dc = 0; let dp = 0; const pc = []; const pp = [];
+    const hrs = [];
+    db.parcels.forEach((p) => {
+      const r = new Date(p.receivedAt);
+      if (r >= start && r <= now) { rc += 1; perDay[dateKey(r)].received += 1; } else if (r >= prevStart && r < start) rp += 1;
+      if (p.deliveredAt) {
+        const d = new Date(p.deliveredAt); const h = (d - r) / H;
+        if (d >= start && d <= now) { dc += 1; perDay[dateKey(d)].delivered += 1; pc.push(h); hrs.push(hourOf(p.deliveredAt)); } else if (d >= prevStart && d < start) { dp += 1; pp.push(h); }
+      }
+    });
+    db.bookings.filter((b) => b.status === 'ACTIVE').forEach((b) => hrs.push(hourOf(slotOf(b.slotId).startsAt)));
+    const avg = (a) => (a.length ? Math.round((a.reduce((x, y) => x + y, 0) / a.length) * 10) / 10 : null);
+    const label = (h) => `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`;
+    const peakHours = Array.from({ length: 16 }, (_, i) => i + 6).map((hour) => ({ hour, label: label(hour), count: hrs.filter((x) => x === hour).length }));
+    const upcoming = db.slots.filter((s) => new Date(s.startsAt) > now && new Date(s.startsAt) <= new Date(+now + 7 * 24 * H) && !s.isClosed);
+    const cap = upcoming.reduce((n, s) => n + s.capacity, 0); const booked = upcoming.reduce((n, s) => n + s.booked, 0);
+    const open = db.parcels.filter((p) => p.status !== 'DELIVERED').sort((a, b) => new Date(a.receivedAt) - new Date(b.receivedAt));
+    return clone({
+      range: days,
+      kpis: { received: { value: rc, previous: rp }, delivered: { value: dc, previous: dp }, avgPickupHours: { value: avg(pc), previous: avg(pp) },
+        slotUtilisation: { value: cap ? Math.round((booked / cap) * 100) : 0 }, uncollected: open.length, overdue: open.map(withVirtuals).filter((p) => p.isOverdue).length },
+      parcelsPerDay: keys.map((k) => perDay[k]), peakHours,
+      uncollected: open.slice(0, 8).map((p) => ({ _id: p._id, courier: p.courier, flat: p.flatId.number, shelfId: p.shelfId, status: p.status, receivedAt: p.receivedAt, ageHours: Math.floor((now - new Date(p.receivedAt)) / H), isOverdue: withVirtuals(p).isOverdue })),
+    });
+  },
+  async listTemplates() { await latency(); need('admin'); return clone(db.templates); },
+  async putTemplates(templates) {
+    await latency();
+    need('admin');
+    const sorted = [...templates].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    if (sorted.some((t, i) => i && sorted[i - 1].endTime > t.startTime)) throw err(400, 'VALIDATION_ERROR', 'Time windows must not overlap.');
+    db.templates = sorted;
+    const now = new Date(); const today = dateKey();
+    const valid = new Set();
+    for (let d = 0; d < 7; d += 1) {
+      const key = addDaysKey(today, d);
+      sorted.forEach((t) => {
+        const h = Number(t.startTime.slice(0, 2)); const eh = Number(t.endTime.slice(0, 2)); const em = Number(t.endTime.slice(3));
+        const startsAt = istToIso(key, h) && new Date(new Date(istToIso(key, h)).getTime() + Number(t.startTime.slice(3)) * 60000).toISOString();
+        const endsAt = new Date(new Date(istToIso(key, eh)).getTime() + em * 60000).toISOString();
+        valid.add(startsAt);
+        const ex = db.slots.find((s) => s.startsAt === startsAt);
+        if (ex) { if (new Date(startsAt) > now && ex.booked <= t.capacity) { ex.capacity = t.capacity; ex.endsAt = endsAt; } }
+        else db.slots.push({ _id: `s${uid()}`, dateKey: key, startsAt, endsAt, capacity: t.capacity, booked: 0, isClosed: false });
+      });
+    }
+    // unbooked future slots whose window no longer exists disappear; booked ones never do
+    db.slots = db.slots.filter((s) => new Date(s.startsAt) <= now || valid.has(s.startsAt) || s.booked > 0 || s.dateKey > addDaysKey(today, 6));
+    save();
+    emit('slot:updated', {});
+    return clone(db.templates);
+  },
+  async patchSlot(id, body) {
+    await latency();
+    need('admin');
+    const slot = slotOf(id);
+    if (!slot) throw err(404, 'NOT_FOUND', 'Slot not found.');
+    if (body.capacity !== undefined && body.capacity < slot.booked) throw err(409, 'CAPACITY_BELOW_BOOKED', 'Capacity cannot be lower than the seats already booked.');
+    Object.assign(slot, body);
+    save();
+    emit('slot:updated', { slotId: id });
+    return clone(slot);
   },
 
   async listNotifications() {

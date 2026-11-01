@@ -84,6 +84,11 @@ export default function SlotPicker() {
         {Array.isArray(slots) && slots.length > 0 && slots.every((s) => s.reason) && (
           <p className="mb-3 flex items-center gap-2 rounded-2xl bg-surface-2 p-3 text-sm text-muted-foreground"><CalendarX2 className="size-4" aria-hidden />Nothing open on this day. Try another.</p>
         )}
+        {Array.isArray(slots) && slots.some((s) => s.suggested) && (
+          <p className="mb-3 text-sm text-muted-foreground">
+            {slots.find((s) => s.suggested).suggestedReason === 'history' ? 'Suggested based on when you usually collect.' : 'Suggested because it is the quietest time, so there is no queue at the gate.'}
+          </p>
+        )}
         {Array.isArray(slots) && (
           <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-4">
             {slots.map((s) => (

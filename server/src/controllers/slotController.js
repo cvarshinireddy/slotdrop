@@ -3,11 +3,14 @@ const Slot = require('../models/Slot');
 const SlotTemplate = require('../models/SlotTemplate');
 const ApiError = require('../utils/ApiError');
 const slotService = require('../services/slotService');
+const suggestionService = require('../services/suggestionService');
 const { toDateKey } = require('../utils/dates');
 
 exports.list = asyncHandler(async (req, res) => {
   const dateKey = req.query.date || toDateKey();
-  res.json({ data: { date: dateKey, slots: await slotService.listForDate(dateKey) } });
+  let slots = await slotService.listForDate(dateKey);
+  if (req.user.role === 'resident') slots = await suggestionService.annotate(slots, req.user); // personalised badge
+  res.json({ data: { date: dateKey, slots } });
 });
 
 exports.today = asyncHandler(async (_req, res) => {
@@ -45,6 +48,10 @@ exports.listTemplates = asyncHandler(async (_req, res) => {
 exports.replaceTemplates = asyncHandler(async (req, res) => {
   await SlotTemplate.deleteMany({});
   const templates = await SlotTemplate.insertMany(req.body.templates);
-  await slotService.generateSlots(7);
+  await slotService.syncToTemplates(7);
   res.json({ data: { templates } });
+});
+
+exports.analytics = asyncHandler(async (req, res) => {
+  res.json({ data: await require('../services/analyticsService').getAnalytics(req.query.range) });
 });

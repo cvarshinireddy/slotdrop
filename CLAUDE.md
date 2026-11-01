@@ -32,7 +32,7 @@ Parcel handover slot-scheduling platform for Indian apartment societies. Securit
 - Build/reuse the component library first: Button, Card, StatusChip, SlotChip, Stepper, QRCard, EmptyState, Toast, Modal, Skeleton.
 
 ## Conventions
-- ES modules, 2-space indent, async/await, no `any`-style sloppiness; small files with one responsibility.
+- Server: CommonJS (simplest Jest setup); client: ES modules. 2-space indent, async/await, no `any`-style sloppiness; small files with one responsibility.
 - API: REST under `/api`, JSON `{ data }` / `{ error: { code, message } }`.
 - Commits: conventional style (`feat:`, `fix:`, `test:`, `docs:`, `chore:`), one per workflow step minimum.
 - Env vars documented in `.env.example`; never commit secrets.

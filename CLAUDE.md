@@ -70,3 +70,8 @@ README (setup, API docs, Mermaid architecture + ER), deployment guide, 5-min dem
 - Rules learned the hard way: never dim text with `opacity` (drops below AA; use muted tokens plus a visible label like "Done"/"Inactive"); every animation must total <= 250ms including delay; day/filter pills must not override their visible text with a different `aria-label`; headings go h1 > h2 > h3 without skipping (use `CardTitle as="h2"`); `scroll-padding` keeps focused elements clear of the fixed header, tab bar and confirm bar (WCAG 2.2 focus not obscured).
 - Shell behaviour: skip-to-content link, document title per route, focus moves to `<main>` on client-side navigation (path comparison, StrictMode-safe).
 - Code splitting: admin charts (recharts) and the guard scanner (html5-qrcode) are lazy chunks; a resident's first load is ~196 kB gzip.
+
+## Deliverables (final)
+- `README.md` (setup, env vars, API reference, Mermaid architecture/ER/sequence diagrams, honest verification table), `docs/deployment.md`, `docs/demo-script.md`, `docs/viva-qa.md`, `docs/project-report.md`, `docs/screenshots/`, `client/vercel.json`.
+- Docs must stay truthful: keep the "verified vs not yet run" tables current. Items still unrun here: DB-backed Jest suites (29 tests), seed against a real DB, real client-to-server path, physical-camera QR scan, actual deployment.
+- Facts to keep consistent across docs if code changes: 28 REST endpoints, 9 models, 78 DB-free server tests, 29 DB-backed tests, 80 browser checks, 60 Lighthouse snapshots, 50 contrast pairs.

@@ -1,0 +1,111 @@
+/* ============================================================
+   SlotDrop design tokens. HSL triples ("H S% L%") so Tailwind can add alpha.
+   Components NEVER hardcode colors: they use these variables via Tailwind classes.
+   ============================================================ */
+:root {
+  /* Surfaces & text — warm off-white canvas, cool ink text */
+  --background: 40 20% 97%;
+  --surface: 0 0% 100%;
+  --surface-2: 40 14% 94%;
+  --border: 40 10% 86%;
+  --foreground: 200 22% 10%;
+  --muted-foreground: 200 8% 36%;
+
+  /* One accent: deep teal */
+  --primary: 175 75% 24%;
+  --primary-foreground: 0 0% 100%;
+  --primary-soft: 175 45% 91%;
+  --primary-soft-foreground: 175 80% 18%;
+  --ring: 175 75% 30%;
+
+  /* Status — each has a solid, a soft background, readable text and a border */
+  --status-received: 34 95% 37%;
+  --status-received-bg: 42 100% 91%;
+  --status-received-fg: 30 90% 22%;
+  --status-received-border: 40 85% 68%;
+
+  --status-booked: 217 91% 55%;
+  --status-booked-bg: 214 95% 93%;
+  --status-booked-fg: 219 80% 29%;
+  --status-booked-border: 213 85% 76%;
+
+  --status-delivered: 152 60% 38%;
+  --status-delivered-bg: 145 60% 90%;
+  --status-delivered-fg: 150 75% 18%;
+  --status-delivered-border: 146 45% 66%;
+
+  --status-overdue: 0 78% 52%;
+  --status-overdue-bg: 0 90% 94%;
+  --status-overdue-fg: 0 70% 33%;
+  --status-overdue-border: 0 75% 78%;
+
+  /* QR codes must stay dark-on-light in both themes or scanners fail */
+  --qr-bg: 0 0% 100%;
+  --qr-fg: 200 22% 8%;
+
+  --radius: 1rem;
+  --shadow-sm: 0 1px 2px hsl(200 30% 10% / 0.05), 0 2px 8px hsl(200 30% 10% / 0.04);
+  --shadow-md: 0 2px 4px hsl(200 30% 10% / 0.05), 0 12px 32px hsl(200 30% 10% / 0.10);
+
+  /* Motion */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dark {
+  --background: 200 18% 7%;
+  --surface: 200 16% 10%;
+  --surface-2: 200 14% 14%;
+  --border: 200 12% 21%;
+  --foreground: 40 15% 95%;
+  --muted-foreground: 200 8% 68%;
+
+  --primary: 172 62% 52%;
+  --primary-foreground: 200 30% 8%;
+  --primary-soft: 175 40% 16%;
+  --primary-soft-foreground: 172 65% 78%;
+  --ring: 172 62% 58%;
+
+  --status-received: 38 92% 55%;
+  --status-received-bg: 36 55% 15%;
+  --status-received-fg: 42 95% 76%;
+  --status-received-border: 36 55% 30%;
+
+  --status-booked: 217 91% 65%;
+  --status-booked-bg: 217 50% 18%;
+  --status-booked-fg: 213 95% 82%;
+  --status-booked-border: 217 45% 33%;
+
+  --status-delivered: 152 55% 50%;
+  --status-delivered-bg: 150 40% 15%;
+  --status-delivered-fg: 145 65% 78%;
+  --status-delivered-border: 150 35% 28%;
+
+  --status-overdue: 0 80% 62%;
+  --status-overdue-bg: 0 45% 17%;
+  --status-overdue-fg: 0 90% 84%;
+  --status-overdue-border: 0 40% 32%;
+
+  --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.3), 0 2px 8px hsl(0 0% 0% / 0.2);
+  --shadow-md: 0 2px 4px hsl(0 0% 0% / 0.3), 0 12px 32px hsl(0 0% 0% / 0.4);
+}
+
+/* Courier brand tints: only a hue per courier; saturation/lightness adapt to the theme. */
+.courier {
+  --c-bg: hsl(var(--c-h) 70% 92%);
+  --c-fg: hsl(var(--c-h) 65% 24%);
+}
+.dark .courier {
+  --c-bg: hsl(var(--c-h) 48% 20%);
+  --c-fg: hsl(var(--c-h) 75% 82%);
+}
+.courier-amazon { --c-h: 32; }
+.courier-flipkart { --c-h: 215; }
+.courier-swiggy-instamart { --c-h: 22; }
+.courier-blinkit { --c-h: 52; }
+.courier-zomato { --c-h: 350; }
+.courier-myntra { --c-h: 330; }
+.courier-delhivery { --c-h: 0; }
+.courier-bluedart { --c-h: 225; }
+.courier-other { --c-h: 200; }

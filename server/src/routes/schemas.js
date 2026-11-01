@@ -29,3 +29,29 @@ const flatBody = z.object({
 const idParams = z.object({ id: objectId });
 
 module.exports = { objectId, loginBody, registerBody, flatBody, idParams };
+
+const { COURIERS, PARCEL_STATUS } = require('../utils/constants');
+
+const parcelBody = z.object({
+  flatId: objectId,
+  courier: z.enum(COURIERS),
+  shelfId: z.string().trim().max(10).optional(),
+});
+const parcelListQuery = z.object({
+  status: z.enum(Object.values(PARCEL_STATUS)).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+const slotsQuery = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
+const slotPatchBody = z
+  .object({ capacity: z.number().int().min(0).max(100).optional(), isClosed: z.boolean().optional() })
+  .refine((v) => Object.keys(v).length > 0, { message: 'Nothing to update' });
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM');
+const templatesBody = z.object({
+  templates: z
+    .array(z.object({ startTime: hhmm, endTime: hhmm, capacity: z.number().int().min(1).max(100) })
+      .refine((t) => t.startTime < t.endTime, { message: 'End must be after start' }))
+    .min(1).max(24),
+});
+const bookingBody = z.object({ parcelId: objectId, slotId: objectId });
+
+Object.assign(module.exports, { parcelBody, parcelListQuery, slotsQuery, slotPatchBody, templatesBody, bookingBody });

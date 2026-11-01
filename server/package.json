@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
-    "seed": "node src/seed/seed.js"
+    "seed": "node src/seed/seed.js",
+    "test:nodb": "cross-env NODE_ENV=test jest tests/smoke.test.js tests/dates.test.js"
   },
   "author": "",
   "license": "ISC",
@@ -21,6 +22,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.4",
     "morgan": "^1.12.1",
+    "multer": "^2.5.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

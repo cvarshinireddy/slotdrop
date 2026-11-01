@@ -16,6 +16,7 @@ app.use(cors({ origin: env.clientOrigin, credentials: true }));
 app.use(express.json({ limit: '100kb' }));
 if (!env.isTest) app.use(morgan('dev'));
 
+app.use('/uploads', express.static(require('path').join(__dirname, '..', 'uploads')));
 app.use('/api', apiLimiter, routes);
 app.use(notFound);
 app.use(errorHandler);

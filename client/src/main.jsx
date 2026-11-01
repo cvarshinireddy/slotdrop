@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { MotionConfig } from 'framer-motion';
 import App from './App';
+import { ErrorBoundary } from './components/layout/ErrorBoundary';
+import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/ui';
 import './styles/index.css';
@@ -14,7 +16,9 @@ createRoot(document.getElementById('root')).render(
       <ThemeProvider>
         <ToastProvider>
           <BrowserRouter>
-            <App />
+            <AuthProvider>
+              <ErrorBoundary><App /></ErrorBoundary>
+            </AuthProvider>
           </BrowserRouter>
         </ToastProvider>
       </ThemeProvider>

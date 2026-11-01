@@ -106,7 +106,8 @@ async function cancelBooking({ bookingId, resident }) {
  */
 async function ownerView(bookingId, resident) {
   const booking = await Booking.findOne({ _id: bookingId, residentId: resident._id })
-    .select('+otpNonce').populate('slotId parcelId');
+    .select('+otpNonce')
+    .populate([{ path: 'slotId' }, { path: 'parcelId', populate: { path: 'flatId' } }]); // flat number is needed for the share message
   if (!booking) throw ApiError.notFound('Booking not found.');
   const view = booking.toObject();
   delete view.otpNonce;

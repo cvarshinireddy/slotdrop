@@ -1,4 +1,4 @@
-export { Button } from './Button';
+export { Button, buttonStyles } from './Button';
 export { Card, CardTitle, CardDescription } from './Card';
 export { StatusChip, STATUS, toChipStatus } from './StatusChip';
 export { SlotChip } from './SlotChip';

@@ -47,3 +47,9 @@ README (setup, API docs, Mermaid architecture + ER), deployment guide, 5-min dem
 
 ## Known environment limitation (sandbox)
 `fastdl.mongodb.org` is blocked by the cloud sandbox network policy, so `mongodb-memory-server` cannot download its binary and **DB-backed Jest tests cannot run here** (`rbac.test.js`, `booking.capacity.test.js`, `otp.verification.test.js`). Only the DB-free tests run: `npm run test:nodb` (smoke, dates, otp.unit). DB-backed tests are written but UNVERIFIED until run where MongoDB is reachable (local machine, CI, or after allowing the host). Do not claim they pass. Run them with `cd server && npm test`.
+
+## Client modes and testing (Step 6)
+- `VITE_API_MODE=mock` runs the whole client against an in-browser mock API (`client/src/mocks/mockApi.js`, mirrors server shapes/error codes, synced across tabs via BroadcastChannel). `VITE_API_MODE=api` (default) talks to the Express server. Both implement the same interface in `client/src/lib/api.js`; keep them in sync when the server contract changes.
+- Auth token lives in **sessionStorage** (per tab) so a guard and a resident can be signed in side by side in one browser for demos.
+- Regression run (mock mode, no server): `cd client && VITE_API_MODE=mock npx vite --host 127.0.0.1 &` then `node scripts/e2e-mock.cjs /tmp/e2e` (47 checks: flows, realtime, RBAC, 375px/1280px overflow, 44px tap targets, console errors).
+- The real-API wiring (`realApi.js`, Socket.io) is checked against server response shapes by reading code, but is **not yet run end to end** because the sandbox has no MongoDB. Verify on a machine with MongoDB.

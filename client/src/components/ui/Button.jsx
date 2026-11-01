@@ -4,7 +4,7 @@ import { cva } from 'class-variance-authority';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const button = cva(
+export const buttonStyles = cva(
   'inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-2xl font-medium transition-colors duration-fast disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
@@ -37,7 +37,7 @@ export const Button = forwardRef(function Button(
       ref={ref}
       whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.12 }}
-      className={cn(button({ variant, size, block }), className)}
+      className={cn(buttonStyles({ variant, size, block }), className)}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...props}

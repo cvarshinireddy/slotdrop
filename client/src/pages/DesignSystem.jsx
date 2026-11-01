@@ -53,6 +53,7 @@ export default function DesignSystem() {
   const [modalOpen, setModalOpen] = useState(false);
   const [qr, setQr] = useState('');
 
+  useEffect(() => { document.title = 'Design system · SlotDrop'; }, []);
   useEffect(() => {
     QRCode.toDataURL('slotdrop-demo-token', { margin: 1, width: 448 }).then(setQr);
   }, []);
@@ -145,7 +146,7 @@ export default function DesignSystem() {
               <Button size="lg" block variant="soft">Choose a slot</Button>
             </Card>
           </div>
-          <div className="flex flex-wrap gap-2" aria-label="Courier badges">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Courier badges">
             {COURIERS.map((c) => <CourierBadge key={c} courier={c} className="size-11 rounded-xl text-sm" />)}
           </div>
         </Section>

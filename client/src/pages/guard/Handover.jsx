@@ -16,11 +16,11 @@ function Result({ result, onDone }) {
   return (
     <motion.div role="alert" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
       className={cn('fixed inset-0 z-[70] flex flex-col items-center justify-center gap-6 p-8 text-center', ok ? 'bg-status-delivered-bg text-status-delivered-fg' : 'bg-status-overdue-bg text-status-overdue-fg')}>
-      <motion.span initial={{ scale: 0.4 }} animate={ok ? { scale: [0.4, 1.1, 1] } : { scale: 1, x: [0, -14, 14, -10, 10, -4, 4, 0] }} transition={{ duration: ok ? 0.3 : 0.4 }}
+      <motion.span initial={{ scale: 0.4 }} animate={ok ? { scale: [0.4, 1.08, 1] } : { scale: 1, x: [0, -10, 10, -6, 6, 0] }} transition={{ duration: 0.22 }}
         className={cn('flex size-28 items-center justify-center rounded-full border-4', ok ? 'border-status-delivered bg-surface' : 'border-status-overdue bg-surface')}>
         {ok ? (
           <svg viewBox="0 0 24 24" className="size-16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.12, duration: 0.22 }} />
+            <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.03, duration: 0.22 }} />
           </svg>
         ) : <X className="size-16" strokeWidth={2.5} aria-hidden />}
       </motion.span>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AlertCircle, Eye, EyeOff, LogIn } from 'lucide-react';
@@ -20,6 +20,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => { document.title = 'Sign in · SlotDrop'; }, []);
   if (user) return <Navigate to={homeFor(user.role)} replace />;
 
   async function submit(e) {
@@ -33,16 +34,16 @@ export default function Login() {
       <div className="hidden flex-col justify-between bg-primary p-12 text-primary-foreground lg:flex">
         <Logo className="text-primary-foreground [&>span]:bg-primary-foreground [&>span]:text-primary" />
         <div>
-          <h1 className="max-w-md text-4xl font-bold text-balance">Your parcel. Your time. No more missed deliveries.</h1>
+          <p className="max-w-md font-display text-4xl font-bold tracking-tight text-balance">Your parcel. Your time. No more missed deliveries.</p>
           <p className="mt-4 max-w-md text-base opacity-90">Pick the exact hour you want your parcel handed over. Show a QR at the gate. Done.</p>
         </div>
         <p className="text-sm opacity-80">Built for apartment societies across India.</p>
       </div>
 
-      <div className="flex flex-col px-6 py-6 sm:px-12">
+      <main className="flex flex-col px-6 py-6 sm:px-12">
         <div className="flex items-center justify-between lg:justify-end"><Logo className="lg:hidden" /><ThemeToggle /></div>
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
-          <h2 className="text-3xl font-bold">Welcome back</h2>
+          <h1 className="text-3xl font-bold">Welcome back</h1>
           <p className="mt-1 text-muted-foreground">Sign in with your email or mobile number.</p>
 
           <form onSubmit={submit} className="mt-8 space-y-4" noValidate>
@@ -66,9 +67,9 @@ export default function Login() {
           </form>
 
           <section aria-labelledby="demo" className="mt-8 rounded-2xl border border-dashed border-border p-4">
-            <h3 id="demo" className="text-sm font-semibold">Demo accounts{API_MODE === 'mock' ? ' (runs in your browser)' : ''}</h3>
+            <h2 id="demo" className="text-sm font-semibold">Demo accounts{API_MODE === 'mock' ? ' (runs in your browser)' : ''}</h2>
             <p className="text-xs text-muted-foreground">Tap one to fill the form. Password is {DEMO_PASSWORD}</p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid gap-2">
               {DEMO_ACCOUNTS.map((a) => (
                 <button key={a.role} type="button" onClick={() => { setIdentifier(a.identifier); setPassword(DEMO_PASSWORD); setError(''); }} className="min-h-tap rounded-xl border border-border bg-surface px-3 py-2 text-left hover:bg-surface-2">
                   <span className="block text-sm font-semibold">{a.role}</span>
@@ -78,7 +79,7 @@ export default function Login() {
             </div>
           </section>
         </motion.div>
-      </div>
+      </main>
     </div>
   );
 }

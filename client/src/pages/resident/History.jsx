@@ -41,7 +41,7 @@ function HistoryItem({ parcel }) {
       <button onClick={toggle} aria-expanded={open} aria-controls={panelId} className="flex min-h-tap w-full items-center gap-3 rounded-2xl p-4 text-left">
         <CourierBadge courier={parcel.courier} className="size-12 rounded-xl text-base" />
         <div className="min-w-0 flex-1">
-          <CardTitle className="truncate text-base">{parcel.courier}</CardTitle>
+          <CardTitle as="h2" className="truncate text-base">{parcel.courier}</CardTitle>
           <p className="text-xs text-muted-foreground">Received {receivedLabel(parcel.receivedAt)}</p>
         </div>
         <StatusChip status={toChipStatus(parcel.status, parcel.isOverdue)} />

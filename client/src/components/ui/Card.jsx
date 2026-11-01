@@ -22,5 +22,6 @@ export const Card = forwardRef(function Card({ className, animate = false, inter
   );
 });
 
-export const CardTitle = ({ className, ...p }) => <h3 className={cn('font-display text-xl font-semibold', className)} {...p} />;
+// `as` lets each page keep a correct heading outline (h1 > h2 > h3) without changing the look.
+export const CardTitle = ({ as: Tag = 'h3', className, ...p }) => <Tag className={cn('font-display text-xl font-semibold', className)} {...p} />;
 export const CardDescription = ({ className, ...p }) => <p className={cn('text-sm text-muted-foreground', className)} {...p} />;

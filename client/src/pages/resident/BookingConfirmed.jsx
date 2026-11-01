@@ -12,10 +12,10 @@ import { downloadIcs } from '@/lib/ics';
 // Animated tick: the path "draws" itself (pathLength 0 -> 1). Reduced-motion users just see it.
 function SuccessCheck() {
   return (
-    <motion.span initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+    <motion.span initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
       className="mx-auto flex size-16 items-center justify-center rounded-full bg-status-delivered-bg text-status-delivered">
       <svg viewBox="0 0 24 24" className="size-9" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.15, duration: 0.25 }} />
+        <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.03, duration: 0.22 }} />
       </svg>
     </motion.span>
   );

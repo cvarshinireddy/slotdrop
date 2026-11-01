@@ -11,7 +11,7 @@ export default function Account() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Account</h1>
       <Card className="space-y-1">
-        <CardTitle>{user.name}</CardTitle>
+        <CardTitle as="h2">{user.name}</CardTitle>
         <CardDescription className="capitalize">{user.role}{user.flatId ? ` · Flat ${user.flatId.number}` : ''}</CardDescription>
         <CardDescription>{user.email} · {user.phone}</CardDescription>
       </Card>

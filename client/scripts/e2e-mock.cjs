@@ -18,7 +18,7 @@ async function audit(page, tag) {
   const r = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
     small: [...document.querySelectorAll('button, a, input:not([type=file]), [role=tab], [role=option]')]
-      .filter((el) => el.offsetParent !== null && !el.closest('[aria-hidden=true]'))
+      .filter((el) => el.offsetParent !== null && !el.closest('[aria-hidden=true]') && !el.matches('.sr-only:not(:focus)')) // skip link is hidden until focused
       .map((el) => [el, el.getBoundingClientRect()]).filter(([, b]) => b.width > 0 && (b.height < 43.5 || b.width < 43.5))
       .map(([el, b]) => `${el.tagName}:"${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 20)}" ${Math.round(b.width)}x${Math.round(b.height)}`),
   }));
@@ -52,7 +52,7 @@ async function login(page, role) {
 
   await res.locator('article', { hasText: 'Amazon' }).getByRole('link', { name: 'Choose a slot' }).click();
   await res.getByRole('heading', { name: 'Pick a time' }).waitFor();
-  await res.getByRole('button', { name: 'Tomorrow' }).click();
+  await res.getByRole('group', { name: 'Choose a day' }).getByRole('button').nth(1).click();
   await res.waitForSelector('section[aria-labelledby=slots-h] button');
   check('picker: suggested badge visible', (await res.getByText('Suggested for you').count()) >= 1);
   check('picker: suggestion explained (history-based)', (await res.getByText('Suggested based on when you usually collect.').count()) === 1);
@@ -130,7 +130,7 @@ async function login(page, role) {
   // delegate code at the gate: Priya books Flipkart (p2 is the older one) then guard uses the neighbour code
   await res.goto(`${BASE}/`); await res.waitForSelector('article');
   await res.locator('article', { hasText: 'Flipkart' }).first().getByRole('link', { name: 'Choose a slot' }).click();
-  await res.getByRole('button', { name: 'Tomorrow' }).click();
+  await res.getByRole('group', { name: 'Choose a day' }).getByRole('button').nth(1).click();
   await res.waitForSelector('section[aria-labelledby=slots-h] button');
   await res.locator('section[aria-labelledby=slots-h] button:not([aria-disabled])').first().click();
   await res.getByRole('button', { name: 'Confirm slot' }).click();
@@ -150,7 +150,10 @@ async function login(page, role) {
   await g.getByRole('link', { name: 'Today' }).click();
   await g.getByRole('heading', { name: /Today.s handovers/ }).waitFor();
   await g.waitForSelector('ol li');
-  check('schedule: slot-wise list rendered', (await g.locator('ol > li').count()) >= 10);
+  const earlier = g.getByRole('button', { name: /earlier slots/ });
+  const upcomingOnly = await g.locator('ol > li').count();
+  if (await earlier.count()) { await earlier.click(); check('schedule: finished slots collapsed by default, expandable', (await g.locator('ol > li').count()) > upcomingOnly); }
+  check('schedule: slot-wise list rendered (12 hourly slots)', (await g.locator('ol > li').count()) >= 10);
   await audit(g, 'schedule');
   await g.screenshot({ path: `${OUT}/schedule-375.png`, fullPage: true });
 
@@ -217,7 +220,7 @@ async function login(page, role) {
   // resident sees it immediately (same mock backend, other tab)
   await res.goto(`${BASE}/`); await res.waitForSelector('article');
   await res.locator('article', { hasText: 'Myntra' }).getByRole('link', { name: 'Choose a slot' }).click();
-  await res.getByRole('button', { name: 'Tomorrow' }).click();
+  await res.getByRole('group', { name: 'Choose a day' }).getByRole('button').nth(1).click();
   await res.waitForSelector('section[aria-labelledby=slots-h] button');
   check('capacity: closed slot disabled for residents with reason', (await res.getByText('Closed by society office').count()) === 1);
   // windows editor: overlap blocked client-side, valid save works
@@ -301,6 +304,28 @@ async function login(page, role) {
   await res.goto(`${BASE}/admin`);
   await res.waitForURL(`${BASE}/`);
   check('RBAC: resident bounced from admin dashboard', true);
+
+
+  // ---------- keyboard, titles, reduced motion ----------
+  const kb = await ctx.newPage(); watch(kb, 'keyboard');
+  await login(kb, 'Resident'); await kb.waitForSelector('article');
+  check('a11y: document title follows the route', (await kb.title()) === 'Home · SlotDrop');
+  await kb.goto(`${BASE}/history`); await kb.waitForSelector('article');
+  check('a11y: history page title', (await kb.title()) === 'History · SlotDrop');
+  await kb.keyboard.press('Tab');
+  const skip = kb.getByRole('link', { name: 'Skip to content' });
+  check('a11y: skip link is the first tab stop and becomes visible on focus', (await skip.evaluate((el) => el === document.activeElement)) && (await skip.boundingBox()).width > 40);
+  await kb.keyboard.press('Enter');
+  check('a11y: skip link moves focus to the main content', await kb.evaluate(() => document.activeElement?.id === 'main-content'));
+  await kb.evaluate(() => document.activeElement.blur());
+  await kb.getByRole('navigation', { name: 'Main' }).last().getByRole('link', { name: 'Account' }).click();
+  await kb.getByRole('heading', { name: 'Account', level: 1 }).waitFor();
+  check('a11y: title updates after client-side navigation', await eventually(async () => (await kb.title()) === 'Account · SlotDrop'));
+  check('a11y: route change moves focus to the new page (screen reader announcement)', await eventually(() => kb.evaluate(() => document.activeElement?.id === 'main-content')));
+  const rm = await browser.newContext({ viewport: { width: 375, height: 812 }, reducedMotion: 'reduce' });
+  const rp = await rm.newPage(); await rp.goto(`${BASE}/login`);
+  check('motion: prefers-reduced-motion neutralises CSS animation', await rp.evaluate(() => { const d = document.createElement('div'); d.className = 'animate-pulse'; document.body.appendChild(d); return parseFloat(getComputedStyle(d).animationDuration) < 0.001; }));
+  await rm.close();
 
   // ---------- desktop + dark ----------
   const d = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark' });

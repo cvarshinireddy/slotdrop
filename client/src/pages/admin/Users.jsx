@@ -70,10 +70,10 @@ export default function Users() {
             <ul className="space-y-3">
               {shown.map((u) => (
                 <li key={u._id}>
-                  <Card className={cn('flex items-center gap-3', !u.isActive && 'opacity-60')}>
+                  <Card className={cn('flex items-center gap-3', !u.isActive && 'bg-surface-2 shadow-none')}>
                     <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft font-display font-semibold text-primary-soft-foreground">{initials(u.name)}</span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{u.name}{u._id === me._id && <span className="ml-2 text-xs font-normal text-muted-foreground">(you)</span>}</p>
+                      <p className="truncate font-semibold">{u.name}{u._id === me._id && <span className="ml-2 text-xs font-normal text-muted-foreground">(you)</span>}{!u.isActive && <span className="ml-2 rounded-full border border-border px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground">Inactive</span>}</p>
                       <p className="truncate text-sm text-muted-foreground"><span className="capitalize">{u.role}</span>{u.flatId ? ` · ${u.flatId.number}` : ''} · {u.phone}</p>
                       <p className="truncate text-xs text-muted-foreground">{u.email}</p>
                     </div>

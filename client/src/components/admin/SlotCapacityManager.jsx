@@ -59,7 +59,7 @@ export function SlotCapacityManager({ utilisation, onChanged }) {
 
       <div role="group" aria-label="Choose a day" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {days.map((key) => (
-          <button key={key} onClick={() => setDay(key)} aria-pressed={day === key} aria-label={key === days[0] ? 'Today' : `${weekday(key)} ${dayNumber(key)}`}
+          <button key={key} onClick={() => setDay(key)} aria-pressed={day === key}
             className={cn('flex min-h-14 min-w-14 shrink-0 flex-col items-center justify-center rounded-2xl border px-2 text-xs transition-colors duration-fast', day === key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-surface hover:bg-surface-2')}>
             <span className="opacity-80">{key === days[0] ? 'Today' : weekday(key)}</span><span className="font-display text-base font-semibold">{dayNumber(key)}</span>
           </button>
@@ -75,9 +75,9 @@ export function SlotCapacityManager({ utilisation, onChanged }) {
             const past = new Date(s.endsAt) <= now;
             const fill = s.capacity ? Math.round((s.booked / s.capacity) * 100) : 100;
             return (
-              <li key={s._id} className={cn('flex items-center gap-3 py-3', past && 'opacity-50')}>
+              <li key={s._id} className="flex items-center gap-3 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{slotRange(s.startsAt, s.endsAt)}{s.isClosed && <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground">Closed</span>}</p>
+                  <p className={cn('font-semibold', past && 'text-muted-foreground')}>{slotRange(s.startsAt, s.endsAt)}{past && <span className="ml-2 rounded-full border border-border px-2 py-0.5 align-middle text-xs font-medium">Done</span>}{s.isClosed && <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground">Closed</span>}</p>
                   <p className="text-xs text-muted-foreground">{s.booked} of {s.capacity} booked</p>
                   <div aria-hidden className="mt-1.5 h-1.5 w-full max-w-28 overflow-hidden rounded-full bg-primary-soft"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, fill)}%` }} /></div>
                 </div>

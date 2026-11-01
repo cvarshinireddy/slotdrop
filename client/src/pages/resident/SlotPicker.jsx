@@ -68,7 +68,7 @@ export default function SlotPicker() {
 
       <div role="group" aria-label="Choose a day" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
         {days.map((key) => (
-          <button key={key} onClick={() => { setDay(key); setSelected(null); }} aria-pressed={day === key} aria-label={dayLabel(key)}
+          <button key={key} onClick={() => { setDay(key); setSelected(null); }} aria-pressed={day === key}
             className={cn('flex min-h-16 min-w-16 shrink-0 flex-col items-center justify-center rounded-2xl border px-3 transition-colors duration-fast', day === key ? 'border-primary bg-primary text-primary-foreground shadow-soft' : 'border-border bg-surface hover:bg-surface-2')}>
             <span className="text-xs font-medium opacity-80">{key === days[0] ? 'Today' : weekday(key)}</span>
             <span className="font-display text-xl font-semibold">{dayNumber(key)}</span>

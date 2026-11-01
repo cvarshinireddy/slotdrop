@@ -51,7 +51,7 @@ README (setup, API docs, Mermaid architecture + ER), deployment guide, 5-min dem
 ## Client modes and testing (Step 6)
 - `VITE_API_MODE=mock` runs the whole client against an in-browser mock API (`client/src/mocks/mockApi.js`, mirrors server shapes/error codes, synced across tabs via BroadcastChannel). `VITE_API_MODE=api` (default) talks to the Express server. Both implement the same interface in `client/src/lib/api.js`; keep them in sync when the server contract changes.
 - Auth token lives in **sessionStorage** (per tab) so a guard and a resident can be signed in side by side in one browser for demos.
-- Regression run (mock mode, no server): `cd client && VITE_API_MODE=mock npx vite --host 127.0.0.1 &` then `node scripts/e2e-mock.cjs /tmp/e2e` (72 checks: resident/guard/admin flows, users and flats, realtime, RBAC, charts and capacity manager, 375px/1280px overflow, 44px tap targets, console errors).
+- Regression run (mock mode, no server): `cd client && VITE_API_MODE=mock npx vite --host 127.0.0.1 &` then `node scripts/e2e-mock.cjs /tmp/e2e` (80 checks: resident/guard/admin flows, users and flats, realtime, RBAC, charts and capacity manager, 375px/1280px overflow, 44px tap targets, console errors).
 - The real-API wiring (`realApi.js`, Socket.io) is checked against server response shapes by reading code, but is **not yet run end to end** because the sandbox has no MongoDB. Verify on a machine with MongoDB.
 
 ## Dashboard and suggestions (Step 7)
@@ -63,3 +63,10 @@ README (setup, API docs, Mermaid architecture + ER), deployment guide, 5-min dem
 - `npm run seed` (server) wipes and loads demo data: 1 admin, 2 guards, 10 residents, 14 flats, 30 parcels, 22 bookings, ~200 slots (10 days of history + a week ahead). Refuses to run when NODE_ENV=production unless `--force`. **Not run in the sandbox** (no MongoDB); the data builder (`seed/seedData.js`) is pure and covered by `seed.unit.test.js` (relationships, counts, schema validation at four clock times).
 - Demo logins (password `SlotDrop@123`): priya.sharma@slotdrop.in (resident, A-1204), guard1@slotdrop.in, admin@slotdrop.in.
 - Hardening fixes: `GET /users` validated its role filter (operator injection), default slot windows on first boot, refresh-race guards (ParcelsContext, capacity manager), scanner re-read cooldown (Handover). The cooldown needs a real camera to verify and has not been exercised.
+
+## Polish and accessibility (Step 9)
+- Lighthouse accessibility audit of every screen and modal state, light + dark, 375px + 1280px (60 snapshots, all 100): start `VITE_API_MODE=mock npx vite --host 127.0.0.1 &` then `cd client && npm run a11y` (flags: `--role Resident|Guard|Admin|public`, `--width 375|1280`, `--theme light|dark`). It logs in through a real browser session and uses Lighthouse snapshot mode; it waits for toasts to finish fading before measuring.
+- Browser regression: `npm run e2e` (80 checks).
+- Rules learned the hard way: never dim text with `opacity` (drops below AA; use muted tokens plus a visible label like "Done"/"Inactive"); every animation must total <= 250ms including delay; day/filter pills must not override their visible text with a different `aria-label`; headings go h1 > h2 > h3 without skipping (use `CardTitle as="h2"`); `scroll-padding` keeps focused elements clear of the fixed header, tab bar and confirm bar (WCAG 2.2 focus not obscured).
+- Shell behaviour: skip-to-content link, document title per route, focus moves to `<main>` on client-side navigation (path comparison, StrictMode-safe).
+- Code splitting: admin charts (recharts) and the guard scanner (html5-qrcode) are lazy chunks; a resident's first load is ~196 kB gzip.

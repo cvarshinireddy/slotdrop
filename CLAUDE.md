@@ -44,3 +44,6 @@ After every step: run app/tests, fix errors, check 375px and 1280px, commit, giv
 
 ## Final deliverables
 README (setup, API docs, Mermaid architecture + ER), deployment guide, 5-min demo script with logins, 15 viva Q&A, project report draft.
+
+## Known environment limitation (sandbox)
+`fastdl.mongodb.org` is blocked by the cloud sandbox network policy, so `mongodb-memory-server` cannot download its binary and **DB-backed Jest tests cannot run here** (`rbac.test.js`, and the Step 3+ booking/OTP suites). Only `tests/smoke.test.js` (DB-free) runs. DB-backed tests are written but UNVERIFIED until run where MongoDB is reachable (local machine, CI, or after allowing the host). Do not claim they pass. Run them with `cd server && npm test`.
